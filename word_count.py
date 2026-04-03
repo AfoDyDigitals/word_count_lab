@@ -42,12 +42,42 @@ def sequential_word_count(filepaths):
         partial_counts.append(count_words_in_file(filepath))
     return merge_counters(partial_counts)
 
+# ── Threading implementation ──────────────────────────────────────────────────
+
+import threading
+
+def threaded_word_count(filepaths, num_threads=4):
+    """Process files in parallel using threads."""
+    results = [None] * len(filepaths)
+    lock = threading.Lock()
+
+    def worker(index, filepath):
+        local_count = count_words_in_file(filepath)
+        with lock:
+            results[index] = local_count
+
+    threads = []
+    for i, filepath in enumerate(filepaths):
+        t = threading.Thread(target=worker, args=(i, filepath))
+        threads.append(t)
+        t.start()
+
+        # Only allow num_threads to run at once
+        if len(threads) >= num_threads:
+            for t in threads:
+                t.join()
+            threads = []
+
+    # Wait for any remaining threads
+    for t in threads:
+        t.join()
+
+    return merge_counters(results)
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
     try:
-        # Build list of all .txt files in the corpus folder
         corpus_dir = 'corpus'
         filepaths = [
             os.path.join(corpus_dir, f)
@@ -57,16 +87,30 @@ if __name__ == '__main__':
 
         print(f"Found {len(filepaths)} files in corpus.\n")
 
-        # Run sequential version and time it
+        # ── Sequential ────────────────────────────────────────────────────────
         start = time.time()
-        results = sequential_word_count(filepaths)
+        results_seq = sequential_word_count(filepaths)
         end = time.time()
+        time_seq = end - start
+        print(f"Sequential completed in {time_seq:.4f} seconds")
+        print(f"Total unique words: {len(results_seq)}\n")
 
-        print(f"Sequential completed in {end - start:.4f} seconds")
-        print(f"Total unique words: {len(results)}")
-        print(f"\nTop 20 most common words:")
-        for word, count in results.most_common(20):
-            print(f"  {word:<20} {count}")
+        # ── Threaded ──────────────────────────────────────────────────────────
+        start = time.time()
+        results_thr = threaded_word_count(filepaths, num_threads=4)
+        end = time.time()
+        time_thr = end - start
+        print(f"Threaded (4 threads) completed in {time_thr:.4f} seconds")
+        print(f"Total unique words: {len(results_thr)}\n")
+
+        # ── Correctness check ─────────────────────────────────────────────────
+        if results_seq == results_thr:
+            print("✓ Threaded result matches sequential — correct!\n")
+        else:
+            print("✗ WARNING: results do not match!\n")
+
+        # ── Speed-up ──────────────────────────────────────────────────────────
+        print(f"Speed-up (threaded vs sequential): {time_seq/time_thr:.2f}x")
 
     except Exception as e:
         print(f"ERROR: {e}")
