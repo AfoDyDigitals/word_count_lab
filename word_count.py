@@ -4,50 +4,45 @@ import time
 from collections import Counter
 
 
-# ── Tokeniser ────────────────────────────────────────────────────────────────
+# Tokeniser 
 
 def tokenise(text):
-    """Lowercase the text and extract words using a simple regex."""
     text = text.lower()
     words = re.findall(r'\b[a-z]+\b', text)
     return words
 
 
-# ── Map phase ─────────────────────────────────────────────────────────────────
+# Map phase 
 
 def count_words_in_file(filepath):
-    """Read one file and return a Counter of its word frequencies."""
     with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
         text = f.read()
     words = tokenise(text)
     return Counter(words)
 
 
-# ── Reduce phase ──────────────────────────────────────────────────────────────
+# Reduce phase 
 
 def merge_counters(counters):
-    """Merge a list of Counters into one global Counter."""
     global_counts = Counter()
     for counter in counters:
         global_counts.update(counter)
     return global_counts
 
 
-# ── Sequential implementation ─────────────────────────────────────────────────
+# Sequential implementation
 
 def sequential_word_count(filepaths):
-    """Process all files one by one and return global word counts."""
     partial_counts = []
     for filepath in filepaths:
         partial_counts.append(count_words_in_file(filepath))
     return merge_counters(partial_counts)
 
-# ── Threading implementation ──────────────────────────────────────────────────
+# Threading implementation 
 
 import threading
 
 def threaded_word_count(filepaths, num_threads=4):
-    """Process files in parallel using threads."""
     results = [None] * len(filepaths)
     lock = threading.Lock()
 
@@ -62,29 +57,26 @@ def threaded_word_count(filepaths, num_threads=4):
         threads.append(t)
         t.start()
 
-        # Only allow num_threads to run at once
         if len(threads) >= num_threads:
             for t in threads:
                 t.join()
             threads = []
 
-    # Wait for any remaining threads
     for t in threads:
         t.join()
 
     return merge_counters(results)
 
-# ── Multiprocessing implementation ────────────────────────────────────────────
+# Multiprocessing implementation
 
 from multiprocessing import Pool
 
 def multiprocess_word_count(filepaths, num_processes=4):
-    """Process files in parallel using separate processes."""
     with Pool(processes=num_processes) as pool:
         partial_counts = pool.map(count_words_in_file, filepaths)
     return merge_counters(partial_counts)
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# Main 
 
 if __name__ == '__main__':
     try:
@@ -97,7 +89,7 @@ if __name__ == '__main__':
 
         print(f"Found {len(filepaths)} files in corpus.\n")
 
-        # ── Sequential ────────────────────────────────────────────────────────
+        # Sequential
         start = time.time()
         results_seq = sequential_word_count(filepaths)
         end = time.time()
@@ -105,7 +97,7 @@ if __name__ == '__main__':
         print(f"Sequential completed in    {time_seq:.4f} seconds")
         print(f"Total unique words:         {len(results_seq)}\n")
 
-        # ── Threaded ──────────────────────────────────────────────────────────
+        # Threaded
         start = time.time()
         results_thr = threaded_word_count(filepaths, num_threads=4)
         end = time.time()
@@ -113,11 +105,11 @@ if __name__ == '__main__':
         print(f"Threaded (4) completed in  {time_thr:.4f} seconds")
         print(f"Total unique words:         {len(results_thr)}")
         if results_seq == results_thr:
-            print("✓ Matches sequential\n")
+            print("Matches sequential\n")
         else:
-            print("✗ WARNING: does not match sequential\n")
+            print("Does not match sequential\n")
 
-        # ── Multiprocessing ───────────────────────────────────────────────────
+        # Multiprocessing 
         start = time.time()
         results_mp = multiprocess_word_count(filepaths, num_processes=4)
         end = time.time()
@@ -125,11 +117,11 @@ if __name__ == '__main__':
         print(f"Multiprocess (4) completed in  {time_mp:.4f} seconds")
         print(f"Total unique words:             {len(results_mp)}")
         if results_seq == results_mp:
-            print("✓ Matches sequential\n")
+            print("Matches sequential\n")
         else:
-            print("✗ WARNING: does not match sequential\n")
+            print("Does not match sequential\n")
 
-        # ── Summary ───────────────────────────────────────────────────────────
+        # Summary
         print("─" * 45)
         print(f"{'Method':<25} {'Time':>8} {'Speed-up':>10}")
         print("─" * 45)
