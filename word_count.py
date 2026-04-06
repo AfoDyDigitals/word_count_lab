@@ -74,6 +74,16 @@ def threaded_word_count(filepaths, num_threads=4):
 
     return merge_counters(results)
 
+# ── Multiprocessing implementation ────────────────────────────────────────────
+
+from multiprocessing import Pool
+
+def multiprocess_word_count(filepaths, num_processes=4):
+    """Process files in parallel using separate processes."""
+    with Pool(processes=num_processes) as pool:
+        partial_counts = pool.map(count_words_in_file, filepaths)
+    return merge_counters(partial_counts)
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
@@ -92,25 +102,41 @@ if __name__ == '__main__':
         results_seq = sequential_word_count(filepaths)
         end = time.time()
         time_seq = end - start
-        print(f"Sequential completed in {time_seq:.4f} seconds")
-        print(f"Total unique words: {len(results_seq)}\n")
+        print(f"Sequential completed in    {time_seq:.4f} seconds")
+        print(f"Total unique words:         {len(results_seq)}\n")
 
         # ── Threaded ──────────────────────────────────────────────────────────
         start = time.time()
         results_thr = threaded_word_count(filepaths, num_threads=4)
         end = time.time()
         time_thr = end - start
-        print(f"Threaded (4 threads) completed in {time_thr:.4f} seconds")
-        print(f"Total unique words: {len(results_thr)}\n")
-
-        # ── Correctness check ─────────────────────────────────────────────────
+        print(f"Threaded (4) completed in  {time_thr:.4f} seconds")
+        print(f"Total unique words:         {len(results_thr)}")
         if results_seq == results_thr:
-            print("✓ Threaded result matches sequential — correct!\n")
+            print("✓ Matches sequential\n")
         else:
-            print("✗ WARNING: results do not match!\n")
+            print("✗ WARNING: does not match sequential\n")
 
-        # ── Speed-up ──────────────────────────────────────────────────────────
-        print(f"Speed-up (threaded vs sequential): {time_seq/time_thr:.2f}x")
+        # ── Multiprocessing ───────────────────────────────────────────────────
+        start = time.time()
+        results_mp = multiprocess_word_count(filepaths, num_processes=4)
+        end = time.time()
+        time_mp = end - start
+        print(f"Multiprocess (4) completed in  {time_mp:.4f} seconds")
+        print(f"Total unique words:             {len(results_mp)}")
+        if results_seq == results_mp:
+            print("✓ Matches sequential\n")
+        else:
+            print("✗ WARNING: does not match sequential\n")
+
+        # ── Summary ───────────────────────────────────────────────────────────
+        print("─" * 45)
+        print(f"{'Method':<25} {'Time':>8} {'Speed-up':>10}")
+        print("─" * 45)
+        print(f"{'Sequential':<25} {time_seq:>8.4f} {'1.00x':>10}")
+        print(f"{'Threaded (4)':<25} {time_thr:>8.4f} {time_seq/time_thr:>9.2f}x")
+        print(f"{'Multiprocess (4)':<25} {time_mp:>8.4f} {time_seq/time_mp:>9.2f}x")
+        print("─" * 45)
 
     except Exception as e:
         print(f"ERROR: {e}")
